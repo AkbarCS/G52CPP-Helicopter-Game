@@ -1,0 +1,189 @@
+#include "HelicopterSprite.h"
+#include "JPGImage.h"
+#include "HelicopterGameEngine.h"
+
+int HelicopterSprite::objectHeight = 35;
+int HelicopterSprite::objectWidth = 100;
+
+HelicopterSprite::HelicopterSprite(HelicopterGameEngine* pEngine)
+	: DisplayableObject(pEngine), myEngine(pEngine)
+{
+	// Current and previous coordinates for the object - set them the same initially
+	m_iCurrentScreenX = m_iPreviousScreenX = 100;
+	m_iCurrentScreenY = m_iPreviousScreenY = 125;
+	// The object coordinate will be the top left of the object
+	m_iStartDrawPosX = 0;
+	m_iStartDrawPosY = 0;
+	// Record the object size as both height and width
+	m_iDrawHeight = objectHeight;
+	m_iDrawWidth = objectWidth;
+	// And make it visible
+	SetVisible(true);
+}
+
+HelicopterSprite::~HelicopterSprite()
+{
+}
+
+void HelicopterSprite::Draw(void)
+{	
+	// Draw an image loaded from a file.
+	ImageData im;
+	// Load the image file into an image object - at the normal size
+	im.LoadImage("helicopter_sprite.png");
+
+	im.RenderImageWithMask(GetEngine()->GetForeground(),
+		0, 0,
+		m_iCurrentScreenX, m_iCurrentScreenY,
+		im.GetWidth(), im.GetHeight());
+
+	// This will store the position at which the object was drawn
+	// so that the background can be drawn over the top.
+	// This will then remove the object from the screen.
+	StoreLastScreenPositionForUndraw();
+}
+
+// Set movement
+void HelicopterSprite::DoUpdate(int iCurrentTime)
+{
+	if (aiState == true)
+		{
+		// Work out current position
+		m_oMovement.Calculate(iCurrentTime);
+		m_iCurrentScreenX = m_oMovement.GetX();
+		m_iCurrentScreenY = m_oMovement.GetY();
+
+		// If movement has finished then request instructions
+		if (m_oMovement.HasMovementFinished(iCurrentTime))
+			{
+			m_oMovement.Calculate(iCurrentTime);
+			m_iCurrentScreenX = m_oMovement.GetX();
+			m_iCurrentScreenY = m_oMovement.GetY();
+			}
+
+		// Ensure that the object gets redrawn on the display, if something changed
+		RedrawObjects();
+		}
+	else
+		{
+		int previousTime = iCurrentTime;
+
+		// Change position if player presses a key
+		if (GetEngine()->IsKeyPressed(SDLK_UP) && (HelicopterGameEngine::getPauseState() == 0))
+			m_iCurrentScreenY -= 6;
+		if (GetEngine()->IsKeyPressed(SDLK_DOWN) && (HelicopterGameEngine::getPauseState() == 0))
+			m_iCurrentScreenY += 6;
+		if (m_iCurrentScreenX < 0)
+			m_iCurrentScreenX = 0;
+		if (m_iCurrentScreenX >= GetEngine()->GetScreenWidth() - m_iDrawWidth)
+			m_iCurrentScreenX = GetEngine()->GetScreenWidth() - m_iDrawWidth;
+		if (m_iCurrentScreenY < 0)
+			m_iCurrentScreenY = 0;
+		if (m_iCurrentScreenY >= GetEngine()->GetScreenHeight() - m_iDrawHeight)
+			m_iCurrentScreenY = GetEngine()->GetScreenHeight() - m_iDrawHeight;
+
+		// Ensure that the object gets redrawn on the display, if something changed
+		RedrawObjects();
+		}
+}
+
+void HelicopterSprite::changeDirection(int upOrDown)
+{
+	if (upOrDown == 0)	
+		m_iCurrentScreenY -= 12;		//go up
+	else				
+		m_iCurrentScreenY += 12;		//go down
+
+	if (m_iCurrentScreenY < 0)
+		m_iCurrentScreenY = 0;
+	if (m_iCurrentScreenY >= GetEngine()->GetScreenHeight() - m_iDrawHeight)
+		m_iCurrentScreenY = GetEngine()->GetScreenHeight() - m_iDrawHeight;
+}
+
+// Allows a caller to specify where the object will move from and to and when
+void HelicopterSprite::SetMovement(int iStartTime, int iEndTime, int iCurrentTime, int iStartX, int iStartY, int iEndX, int iEndY)
+{
+	m_oMovement.Setup(iStartX, iStartY, iEndX, iEndY, iStartTime, iEndTime);
+	m_oMovement.Calculate(iCurrentTime);
+	m_iCurrentScreenX = m_oMovement.GetX();
+	m_iCurrentScreenY = m_oMovement.GetY();
+}
+
+
+void HelicopterSprite::aiControl()
+{
+	//a depth first search algorithm is used to find the route between the obstacles
+	int startPositionTop = this->getPositionY;
+	
+	int 
+
+
+	//control movement
+	//SetMovement(myEngine->GetTime(), myEngine->GetTime() + 200, myEngine->GetTime(), m_iCurrentScreenX, m_iCurrentScreenY, m_iCurrentScreenX, 300);
+
+	AIcollisionDetection(myEngine->getTileArray());
+}
+
+bool HelicopterSprite::AIcollisionDetection(char** data, int positionX, int positionY)
+{
+	int helicopterWidth = getWidth();
+	int helicopterHeight = getHeight();
+
+	int helicopterLeft = this->getPositionX();
+	int helicopterRight = this->getPositionX() + helicopterWidth;
+	int helicopterTop = this->getPositionY();
+	int helicopterBottom = (this->getPositionY()) + helicopterHeight;
+	int helicopterCenterX = (this->getPositionX()) + (helicopterWidth / 2);
+
+	int tileX1 = helicopterRight / 50;
+	int tileX2 = helicopterLeft / 50;
+	int tileY1 = helicopterTop / 50;
+	int tileY2 = helicopterBottom / 50;
+	int tileX3 = helicopterCenterX / 50;
+
+	if (data[tileY1][tileX1] == 'b' || data[tileY1][tileX2] == 'b' || data[tileY2][tileX1] == 'b' || data[tileY2][tileX2] == 'b' || data[tileY1][tileX3] == 'b' || data[tileY2][tileX3] == 'b')
+		{
+		return true;
+		}
+	return false;
+} 
+
+void HelicopterSprite::setAI(bool newAIstate)
+{
+	aiState = newAIstate;
+}
+
+bool HelicopterSprite::returnAIState()
+{
+	return aiState;
+}
+
+int HelicopterSprite::getPositionX()
+{
+	return m_iCurrentScreenX;
+}
+
+void HelicopterSprite::SetPositionX(int newPosition)
+{
+	m_iCurrentScreenX = newPosition;
+}
+
+int HelicopterSprite::getPositionY()
+{
+	return m_iCurrentScreenY;
+}
+
+void HelicopterSprite::SetPositionY(int newPosition)
+{
+	m_iCurrentScreenY = newPosition;
+}
+
+int HelicopterSprite::getHeight()
+{
+	return objectHeight;
+}
+
+int HelicopterSprite::getWidth()
+{
+	return objectWidth;
+}
